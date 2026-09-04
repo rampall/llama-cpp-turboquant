@@ -1445,6 +1445,10 @@ struct ggml_backend_cuda_context {
     // release-after-use path (avoids the legacy pool retaining the temp; ref llama.cpp #22107).
     bool fa_f16_use_pool = false;
 
+    // Shared by the caches below rather than nested in each: MSVC 19.29 mangles same-named types
+    // nested in two unnamed struct members identically and then rejects the second one.
+    struct retired_buf { char * ptr; size_t cap; int dev; };
+
     // Per-graph-eval shared-quantize cache for the mmvq path. Several matvecs in one decode
     // layer consume the same normed activation (Q/V/K read attn_norm; the router, fused
     // gate/up and shared-expert gate read attn_post_norm), and each used to re-quantize it to
@@ -1463,7 +1467,6 @@ struct ggml_backend_cuda_context {
         size_t              size = 0;            // quantized bytes
         int64_t             ne10_padded = 0;     // layout keys
         ggml_type           type = GGML_TYPE_COUNT;
-        struct retired_buf { char * ptr; size_t cap; int dev; };
         std::vector<retired_buf> retired;        // outgrown buffers, freed at teardown (captured graphs may still use them)
     } q8_cache;
 
@@ -1478,7 +1481,6 @@ struct ggml_backend_cuda_context {
         const void *        data = nullptr;
         uint64_t            epoch = 0;
         size_t              size = 0;
-        struct retired_buf { char * ptr; size_t cap; int dev; };
         std::vector<retired_buf> retired;        // outgrown buffers, freed at teardown (captured graphs may still use them)
     } tq_rot_cache;
 
